@@ -3,6 +3,7 @@ from market import get_assets, apply_news_to_market
 from news import generate_news
 from pydantic import BaseModel
 from trading import get_portfolio, buy_asset, sell_asset
+from explanation import explain_market_event
 
 class TradeRequest(BaseModel):
     asset_id: int
@@ -45,3 +46,15 @@ def buy(request: TradeRequest):
 @app.post("/trade/sell")
 def sell(request: TradeRequest):
     return sell_asset(request.asset_id, request.quantity, get_assets())
+
+@app.get("/market/stimulate-event")
+def simulate_market_event():
+    news_event = generate_news()
+    updated_assets = apply_news_to_market(news_event)
+    explanation = explain_market_event(news_event)
+
+    return {
+        "news": news_event,
+        "updated_assets": updated_assets,
+        "ai_explanation": explanation
+    }
