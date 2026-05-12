@@ -1,25 +1,34 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from database import get_db
 from market import get_assets, apply_news_to_market
 from news import generate_news
-from pydantic import BaseModel
-from trading import get_portfolio, buy_asset, sell_asset
+from trading import get_portfolio, buy_asset, sell_asset, get_transactions
 from explanation import explain_market_event
-from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI(title="EconArena AI")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class TradeRequest(BaseModel):
     asset_id: int
     quantity: int
 
-app = FastAPI(title="EconArena AI")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000",
-                   "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
 
 @app.get("/")
 def home():
@@ -27,18 +36,21 @@ def home():
         "message": "EconArena AI backend is running"
     }
 
+
 @app.get("/market/assets")
-def market_assets():
-    return get_assets()
+def market_assets(db: Session = Depends(get_db)):
+    return get_assets(db)
+
 
 @app.get("/news/generate")
 def generate_market_news():
     return generate_news()
 
+
 @app.get("/market/simulate-event")
-def simulate_market_event():
+def simulate_market_event(db: Session = Depends(get_db)):
     news_event = generate_news()
-    updated_assets = apply_news_to_market(news_event)
+    updated_assets = apply_news_to_market(news_event, db)
     explanation = explain_market_event(news_event)
 
     return {
@@ -47,15 +59,30 @@ def simulate_market_event():
         "ai_explanation": explanation
     }
 
-@app.get("/portfolio")
-def portfolio():
-    return get_portfolio()
 
-@app.post ("/trade/buy")
-def buy(request: TradeRequest):
-    return buy_asset(request.asset_id, request.quantity, get_assets())
+@app.get("/portfolio")
+def portfolio(db: Session = Depends(get_db)):
+    return get_portfolio(db)
+
+
+@app.get("/transactions")
+def transactions(db: Session = Depends(get_db)):
+    return get_transactions(db)
+
+
+@app.post("/trade/buy")
+def buy(request: TradeRequest, db: Session = Depends(get_db)):
+    return buy_asset(
+        request.asset_id,
+        request.quantity,
+        db
+    )
+
 
 @app.post("/trade/sell")
-def sell(request: TradeRequest):
-    return sell_asset(request.asset_id, request.quantity, get_assets())
-
+def sell(request: TradeRequest, db: Session = Depends(get_db)):
+    return sell_asset(
+        request.asset_id,
+        request.quantity,
+        db
+    )

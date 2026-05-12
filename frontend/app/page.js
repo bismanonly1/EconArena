@@ -14,43 +14,79 @@ export default function Home() {
   const [quantity, setQuantity] = useState("");
 
   const fetchAssets = async () => {
-    const response = await axios.get(`${API_BASE_URL}/market/assets`);
-    setAssets(response.data);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/market/assets`);
+      setAssets(response.data);
+    } catch (error) {
+      console.error("FETCH ASSETS ERROR:", error);
+    }
   };
 
   const fetchPortfolio = async () => {
-    const response = await axios.get(`${API_BASE_URL}/portfolio`);
-    setPortfolio(response.data);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/portfolio`);
+      setPortfolio(response.data);
+    } catch (error) {
+      console.error("FETCH PORTFOLIO ERROR:", error);
+    }
   };
 
   const simulateEvent = async () => {
-    const response = await axios.get(`${API_BASE_URL}/market/simulate-event`);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/market/simulate-event`);
 
-    setNews(response.data.news);
-    setExplanation(response.data.ai_explanation);
-    setAssets(response.data.updated_assets);
+      setNews(response.data.news);
+      setExplanation(response.data.ai_explanation);
+      setAssets(response.data.updated_assets);
 
-    await fetchPortfolio();
+      await fetchPortfolio();
+    } catch (error) {
+      console.error("SIMULATE EVENT ERROR:", error);
+    }
   };
 
   const buyAsset = async () => {
-    await axios.post(`${API_BASE_URL}/trade/buy`, {
-      asset_id: Number(assetId),
-      quantity: Number(quantity),
-    });
+    try {
+      if (!assetId || !quantity) {
+        alert("Please enter both Asset ID and Quantity.");
+        return;
+      }
 
-    await fetchAssets();
-    await fetchPortfolio();
+      await axios.post(`${API_BASE_URL}/trade/buy`, {
+        asset_id: Number(assetId),
+        quantity: Number(quantity),
+      });
+
+      setAssetId("");
+      setQuantity("");
+
+      await fetchAssets();
+      await fetchPortfolio();
+    } catch (error) {
+      console.error("BUY ASSET ERROR:", error);
+    }
   };
 
   const sellAsset = async () => {
-    await axios.post(`${API_BASE_URL}/trade/sell`, {
-      asset_id: Number(assetId),
-      quantity: Number(quantity),
-    });
+    try {
+      if (!assetId || !quantity) {
+        alert("Please enter both Asset ID and Quantity.");
+        return;
+      }
 
-    await fetchAssets();
-    await fetchPortfolio();
+      await axios.post(`${API_BASE_URL}/trade/sell`, {
+        asset_id: Number(assetId),
+        quantity: Number(quantity),
+      });
+
+      setAssetId("");
+      setQuantity("");
+
+      await fetchAssets();
+      await fetchPortfolio();
+    } catch (error) {
+      console.error("SELL ASSET ERROR:", error);
+    }
   };
 
   useEffect(() => {
@@ -61,6 +97,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
       <h1 className="text-4xl font-bold mb-2">EconArena AI</h1>
+
       <p className="text-gray-400 mb-8">
         AI-powered news-driven market simulation platform
       </p>
@@ -77,7 +114,9 @@ export default function Home() {
       {news && (
         <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
           <h2 className="text-2xl font-semibold mb-2">Latest Market News</h2>
+
           <p className="text-lg">{news.title}</p>
+
           <p className="text-gray-400 mt-2">
             Sector: {news.sector} | Sentiment: {news.sentiment} | Severity:{" "}
             {news.severity}
@@ -88,7 +127,9 @@ export default function Home() {
       {explanation && (
         <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
           <h2 className="text-2xl font-semibold mb-2">AI Explanation</h2>
+
           <p className="text-gray-300 mb-3">{explanation.explanation}</p>
+
           <p className="text-blue-300">{explanation.learning_point}</p>
         </section>
       )}
@@ -129,7 +170,7 @@ export default function Home() {
             type="number"
             placeholder="Asset ID"
             value={assetId}
-            onChange={(e) => setAssetId(e.target.value)}
+            onChange={(event) => setAssetId(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
           />
 
@@ -137,7 +178,7 @@ export default function Home() {
             type="number"
             placeholder="Quantity"
             value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
+            onChange={(event) => setQuantity(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
           />
         </div>
@@ -167,12 +208,31 @@ export default function Home() {
 
           <h3 className="text-lg font-semibold mb-2">Holdings</h3>
 
-          {Object.keys(portfolio.holdings).length === 0 ? (
+          {!portfolio.holdings || portfolio.holdings.length === 0 ? (
             <p className="text-gray-400">No assets owned yet.</p>
           ) : (
-            <pre className="bg-gray-800 p-4 rounded">
-              {JSON.stringify(portfolio.holdings, null, 2)}
-            </pre>
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="py-2">Asset</th>
+                  <th>Quantity</th>
+                  <th>Average Price</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {portfolio.holdings.map((holding) => (
+                  <tr
+                    key={holding.asset_id}
+                    className="border-b border-gray-800"
+                  >
+                    <td className="py-2">{holding.asset_name}</td>
+                    <td>{holding.quantity}</td>
+                    <td>${holding.average_price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </section>
       )}
