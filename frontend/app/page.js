@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+
 import {
   LineChart,
   Line,
@@ -9,7 +10,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from "recharts";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
@@ -44,10 +45,7 @@ export default function Home() {
 
   const fetchMarketHistory = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/market/history`
-      );
-
+      const response = await axios.get(`${API_BASE_URL}/market/history`);
       setMarketHistory(response.data);
     } catch (error) {
       console.error("FETCH MARKET HISTORY ERROR:", error);
@@ -65,7 +63,9 @@ export default function Home() {
 
   const simulateEvent = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/market/simulate-event`);
+      const response = await axios.get(
+        `${API_BASE_URL}/market/simulate-event`
+      );
 
       setNews(response.data.news);
       setExplanation(response.data.ai_explanation);
@@ -95,7 +95,7 @@ export default function Home() {
 
       await fetchAssets();
       await fetchPortfolio();
-      await fetchPortfolio();
+      await fetchTransactions();
     } catch (error) {
       console.error("BUY ASSET ERROR:", error);
     }
@@ -150,29 +150,39 @@ export default function Home() {
 
       {news && (
         <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-          <h2 className="text-2xl font-semibold mb-2">Latest Market News</h2>
+          <h2 className="text-2xl font-semibold mb-2">
+            Latest Market News
+          </h2>
 
           <p className="text-lg">{news.title}</p>
 
           <p className="text-gray-400 mt-2">
-            Sector: {news.sector} | Sentiment: {news.sentiment} | Severity:{" "}
-            {news.severity}
+            Sector: {news.sector} | Sentiment: {news.sentiment} |
+            Severity: {news.severity}
           </p>
         </section>
       )}
 
       {explanation && (
         <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-          <h2 className="text-2xl font-semibold mb-2">AI Explanation</h2>
+          <h2 className="text-2xl font-semibold mb-2">
+            AI Explanation
+          </h2>
 
-          <p className="text-gray-300 mb-3">{explanation.explanation}</p>
+          <p className="text-gray-300 mb-3">
+            {explanation.explanation}
+          </p>
 
-          <p className="text-blue-300">{explanation.learning_point}</p>
+          <p className="text-blue-300">
+            {explanation.learning_point}
+          </p>
         </section>
       )}
 
       <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-        <h2 className="text-2xl font-semibold mb-4">Market Assets</h2>
+        <h2 className="text-2xl font-semibold mb-4">
+          Market Assets
+        </h2>
 
         <table className="w-full text-left">
           <thead>
@@ -187,7 +197,10 @@ export default function Home() {
 
           <tbody>
             {assets.map((asset) => (
-              <tr key={asset.id} className="border-b border-gray-800">
+              <tr
+                key={asset.id}
+                className="border-b border-gray-800"
+              >
                 <td className="py-2">{asset.id}</td>
                 <td>{asset.name}</td>
                 <td>{asset.sector}</td>
@@ -236,83 +249,150 @@ export default function Home() {
           </button>
         </div>
       </section>
-            
-            <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-  <h2 className="text-2xl font-semibold mb-4">
-    Market Price History
-  </h2>
 
-  <div style={{ width: "100%", height: 400 }}>
-    <ResponsiveContainer>
-      <LineChart data={marketHistory}>
-        <CartesianGrid strokeDasharray="3 3" />
+      <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+        <h2 className="text-2xl font-semibold mb-4">
+          Market Price History
+        </h2>
 
-        <XAxis dataKey="asset_name" />
+        <div className="w-full h-[400px] min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={marketHistory}>
+              <CartesianGrid strokeDasharray="3 3" />
 
-        <YAxis />
+              <XAxis dataKey="asset_name" />
 
-        <Tooltip />
+              <YAxis />
 
-        <Line
-          type="monotone"
-          dataKey="price"
-          stroke="#3b82f6"
-          strokeWidth={3}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-</section>
-      
-<section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-  <h2 className="text-2xl font-semibold mb-4">Transaction History</h2>
+              <Tooltip />
 
-  {transactions.length === 0 ? (
-    <p className="text-gray-400">No transactions yet.</p>
-  ) : (
-    <table className="w-full text-left">
-      <thead>
-        <tr className="border-b border-gray-700">
-          <th className="py-2">Type</th>
-          <th>Asset</th>
-          <th>Quantity</th>
-          <th>Price</th>
-          <th>Total Value</th>
-        </tr>
-      </thead>
+              <Line
+                type="monotone"
+                dataKey="price"
+                stroke="#3b82f6"
+                strokeWidth={3}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
-      <tbody>
-        {transactions.map((transaction) => (
-          <tr key={transaction.id} className="border-b border-gray-800">
-            <td className="py-2">{transaction.trade_type}</td>
-            <td>{transaction.asset_name}</td>
-            <td>{transaction.quantity}</td>
-            <td>${transaction.price}</td>
-            <td>${transaction.total_value}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )}
-</section>
+      <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+        <h2 className="text-2xl font-semibold mb-4">
+          Transaction History
+        </h2>
+
+        {transactions.length === 0 ? (
+          <p className="text-gray-400">
+            No transactions yet.
+          </p>
+        ) : (
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="py-2">Type</th>
+                <th>Asset</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total Value</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {transactions.map((transaction) => (
+                <tr
+                  key={transaction.id}
+                  className="border-b border-gray-800"
+                >
+                  <td className="py-2">
+                    {transaction.trade_type}
+                  </td>
+
+                  <td>{transaction.asset_name}</td>
+
+                  <td>{transaction.quantity}</td>
+
+                  <td>${transaction.price}</td>
+
+                  <td>${transaction.total_value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       {portfolio && (
         <section className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-          <h2 className="text-2xl font-semibold mb-4">Portfolio</h2>
+          <h2 className="text-2xl font-semibold mb-4">
+            Portfolio Analytics
+          </h2>
 
-          <p className="mb-4 text-xl">Cash: ${portfolio.cash}</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">Cash</p>
 
-          <h3 className="text-lg font-semibold mb-2">Holdings</h3>
+              <p className="text-2xl font-bold">
+                ${portfolio.cash}
+              </p>
+            </div>
 
-          {!portfolio.holdings || portfolio.holdings.length === 0 ? (
-            <p className="text-gray-400">No assets owned yet.</p>
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">
+                Holdings Value
+              </p>
+
+              <p className="text-2xl font-bold">
+                ${portfolio.holdings_value}
+              </p>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">
+                Total Portfolio Value
+              </p>
+
+              <p className="text-2xl font-bold">
+                ${portfolio.total_portfolio_value}
+              </p>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">
+                Unrealized P/L
+              </p>
+
+              <p
+                className={`text-2xl font-bold ${
+                  portfolio.total_unrealized_pl >= 0
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
+              >
+                ${portfolio.total_unrealized_pl}
+              </p>
+            </div>
+          </div>
+
+          <h3 className="text-lg font-semibold mb-2">
+            Holdings
+          </h3>
+
+          {!portfolio.holdings ||
+          portfolio.holdings.length === 0 ? (
+            <p className="text-gray-400">
+              No assets owned yet.
+            </p>
           ) : (
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-700">
                   <th className="py-2">Asset</th>
                   <th>Quantity</th>
-                  <th>Average Price</th>
+                  <th>Avg Price</th>
+                  <th>Current Price</th>
+                  <th>Current Value</th>
+                  <th>Unrealized P/L</th>
                 </tr>
               </thead>
 
@@ -322,9 +402,27 @@ export default function Home() {
                     key={holding.asset_id}
                     className="border-b border-gray-800"
                   >
-                    <td className="py-2">{holding.asset_name}</td>
+                    <td className="py-2">
+                      {holding.asset_name}
+                    </td>
+
                     <td>{holding.quantity}</td>
+
                     <td>${holding.average_price}</td>
+
+                    <td>${holding.current_price}</td>
+
+                    <td>${holding.current_value}</td>
+
+                    <td
+                      className={
+                        holding.unrealized_pl >= 0
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }
+                    >
+                      ${holding.unrealized_pl}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -5,17 +5,41 @@ def get_portfolio(db):
     portfolio = db.query(Portfolio).first()
     holdings = db.query(Holding).all()
 
+    holdings_data = []
+    holdings_value = 0
+    total_unrealized_pl = 0
+
+    for holding in holdings:
+        asset = db.query(Asset).filter(
+            Asset.id == holding.asset_id
+        ).first()
+
+        current_price = asset.price if asset else holding.average_price
+        current_value = round(holding.quantity * current_price, 2)
+        cost_basis = round(holding.quantity * holding.average_price, 2)
+        unrealized_pl = round(current_value - cost_basis, 2)
+
+        holdings_value += current_value
+        total_unrealized_pl += unrealized_pl
+
+        holdings_data.append({
+            "asset_id": holding.asset_id,
+            "asset_name": holding.asset_name,
+            "quantity": holding.quantity,
+            "average_price": holding.average_price,
+            "current_price": current_price,
+            "current_value": current_value,
+            "unrealized_pl": unrealized_pl
+        })
+
+    total_portfolio_value = round(portfolio.cash + holdings_value, 2)
+
     return {
         "cash": portfolio.cash,
-        "holdings": [
-            {
-                "asset_id": holding.asset_id,
-                "asset_name": holding.asset_name,
-                "quantity": holding.quantity,
-                "average_price": holding.average_price
-            }
-            for holding in holdings
-        ]
+        "holdings_value": round(holdings_value, 2),
+        "total_portfolio_value": total_portfolio_value,
+        "total_unrealized_pl": round(total_unrealized_pl, 2),
+        "holdings": holdings_data
     }
 
 
