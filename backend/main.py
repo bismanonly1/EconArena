@@ -8,7 +8,7 @@ from market import get_assets, apply_news_to_market
 from news import generate_news
 from trading import get_portfolio, buy_asset, sell_asset, get_transactions
 from explanation import explain_market_event
-from db_models import MarketHistory
+from db_models import MarketHistory, Asset, Portfolio, Holding, Transaction, NewsEvent
 
 
 app = FastAPI(title="EconArena AI")
@@ -51,6 +51,17 @@ def generate_market_news():
 @app.get("/market/simulate-event")
 def simulate_market_event(db: Session = Depends(get_db)):
     news_event = generate_news()
+
+    saved_news = NewsEvent(
+        title = news_event["title"],
+        sector = news_event["sector"],
+        sentiment = news_event["sentiment"],
+        severity = news_event["severity"],
+    )
+
+    db.add(saved_news)
+    db.commit()
+
     updated_assets = apply_news_to_market(news_event, db)
     explanation = explain_market_event(news_event)
 
@@ -59,6 +70,22 @@ def simulate_market_event(db: Session = Depends(get_db)):
         "updated_assets": updated_assets,
         "ai_explanation": explanation
     }
+
+@app.get("/news/history")
+def news_history(db: Session = Depends(get_db)):
+    events = db.query(NewsEvent).order_by(NewsEvent.timestamp.desc()).all()
+
+    return [
+        {
+            "id": event.id,
+            "title": event.title,
+            "sector": event.sector,
+            "sentiment": event.sentiment,
+            "severity": event.severity,
+            "timestamp": event.timestamp
+        }
+        for event in events
+    ]
 
 
 @app.get("/portfolio")
@@ -99,3 +126,30 @@ def sell(request: TradeRequest, db: Session = Depends(get_db)):
         db
     )
 
+@app.post("/simulation/reset")
+def reset_simulation(db: Session = Depends(get_db)):
+    db.query(Holding).delete()
+    db.query(Transaction).delete()
+    db.query(MarketHistory).delete()
+    db.query(NewsEvent).delete()
+
+    portfolio = db.query(Portfolio).first()
+    if portfolio:
+        portfolio.cash = 10000.0
+
+    starter_prices = {
+        "TechNova": 100.0,
+        "EnergyMax": 80.0,
+        "Healthcore": 60.0,
+        "BankTrust": 90.0,
+        "DefenseShield": 110.0
+    }
+
+    assets = db.query(Asset).all()
+    for asset in assets:
+        if asset.name in starter_prices:
+            asset.price = starter_prices[asset.name]
+
+    db.commit()
+
+    return {"message": "Simulation reset successfully"}

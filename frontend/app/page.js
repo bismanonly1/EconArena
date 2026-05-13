@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import {
@@ -24,11 +24,18 @@ export default function Home() {
   const [quantity, setQuantity] = useState("");
   const [marketHistory, setMarketHistory] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [newsHistory, setNewsHistory] = useState([]);
+  const [selectedChartAsset, setSelectedChartAsset] = useState("");
+  const [message, setMessage] = useState("");
 
   const fetchAssets = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/market/assets`);
       setAssets(response.data);
+
+      if (!selectedChartAsset && response.data.length > 0) {
+        setSelectedChartAsset(response.data[0].name);
+      }
     } catch (error) {
       console.error("FETCH ASSETS ERROR:", error);
     }
@@ -61,75 +68,128 @@ export default function Home() {
     }
   };
 
+  const fetchNewsHistory = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/news/history`);
+      setNewsHistory(response.data);
+    } catch (error) {
+      console.error("FETCH NEWS HISTORY ERROR:", error);
+    }
+  };
+
+  const refreshAll = async () => {
+    await fetchAssets();
+    await fetchPortfolio();
+    await fetchMarketHistory();
+    await fetchTransactions();
+    await fetchNewsHistory();
+  };
+
   const simulateEvent = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/market/simulate-event`
-      );
+      const response = await axios.get(`${API_BASE_URL}/market/simulate-event`);
 
       setNews(response.data.news);
       setExplanation(response.data.ai_explanation);
       setAssets(response.data.updated_assets);
+      setMessage("Market event generated successfully.");
 
       await fetchPortfolio();
       await fetchMarketHistory();
+      await fetchNewsHistory();
     } catch (error) {
       console.error("SIMULATE EVENT ERROR:", error);
+      setMessage("Failed to generate market event.");
     }
   };
 
   const buyAsset = async () => {
     try {
       if (!assetId || !quantity) {
-        alert("Please enter both Asset ID and Quantity.");
+        setMessage("Please select an asset and enter quantity.");
         return;
       }
 
-      await axios.post(`${API_BASE_URL}/trade/buy`, {
+      const response = await axios.post(`${API_BASE_URL}/trade/buy`, {
         asset_id: Number(assetId),
         quantity: Number(quantity),
       });
 
+      if (response.data.error) {
+        setMessage(response.data.error);
+        return;
+      }
+
       setAssetId("");
       setQuantity("");
+      setMessage("Buy order successful.");
 
       await fetchAssets();
       await fetchPortfolio();
       await fetchTransactions();
     } catch (error) {
       console.error("BUY ASSET ERROR:", error);
+      setMessage("Buy order failed.");
     }
   };
 
   const sellAsset = async () => {
     try {
       if (!assetId || !quantity) {
-        alert("Please enter both Asset ID and Quantity.");
+        setMessage("Please select an asset and enter quantity.");
         return;
       }
 
-      await axios.post(`${API_BASE_URL}/trade/sell`, {
+      const response = await axios.post(`${API_BASE_URL}/trade/sell`, {
         asset_id: Number(assetId),
         quantity: Number(quantity),
       });
 
+      if (response.data.error) {
+        setMessage(response.data.error);
+        return;
+      }
+
       setAssetId("");
       setQuantity("");
+      setMessage("Sell order successful.");
 
       await fetchAssets();
       await fetchPortfolio();
       await fetchTransactions();
     } catch (error) {
       console.error("SELL ASSET ERROR:", error);
+      setMessage("Sell order failed.");
+    }
+  };
+
+  const resetSimulation = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/simulation/reset`);
+
+      setNews(null);
+      setExplanation(null);
+      setMessage("Simulation reset successfully.");
+
+      await refreshAll();
+    } catch (error) {
+      console.error("RESET SIMULATION ERROR:", error);
+      setMessage("Simulation reset failed.");
     }
   };
 
   useEffect(() => {
-    fetchAssets();
-    fetchPortfolio();
-    fetchMarketHistory();
-    fetchTransactions();
+    refreshAll();
   }, []);
+
+  const filteredMarketHistory = useMemo(() => {
+    return marketHistory
+      .filter((item) => item.asset_name === selectedChartAsset)
+      .map((item) => ({
+        ...item,
+        time: new Date(item.timestamp).toLocaleTimeString(),
+      }));
+  }, [marketHistory, selectedChartAsset]);
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
@@ -139,50 +199,53 @@ export default function Home() {
         AI-powered news-driven market simulation platform
       </p>
 
-      <section className="mb-8">
+      {message && (
+        <section className="bg-gray-800 p-4 rounded-xl mb-6 border border-gray-700">
+          <p>{message}</p>
+        </section>
+      )}
+
+      <section className="mb-8 flex gap-4">
         <button
           onClick={simulateEvent}
           className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold"
         >
           Generate Market Event
         </button>
+
+        <button
+          onClick={resetSimulation}
+          className="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-semibold"
+        >
+          Reset Simulation
+        </button>
       </section>
 
       {news && (
         <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-          <h2 className="text-2xl font-semibold mb-2">
-            Latest Market News
-          </h2>
+          <h2 className="text-2xl font-semibold mb-2">Latest Market News</h2>
 
           <p className="text-lg">{news.title}</p>
 
           <p className="text-gray-400 mt-2">
-            Sector: {news.sector} | Sentiment: {news.sentiment} |
-            Severity: {news.severity}
+            Sector: {news.sector} | Sentiment: {news.sentiment} | Severity:{" "}
+            {news.severity}
           </p>
         </section>
       )}
 
       {explanation && (
         <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-          <h2 className="text-2xl font-semibold mb-2">
-            AI Explanation
-          </h2>
+          <h2 className="text-2xl font-semibold mb-2">AI Explanation</h2>
 
-          <p className="text-gray-300 mb-3">
-            {explanation.explanation}
-          </p>
+          <p className="text-gray-300 mb-3">{explanation.explanation}</p>
 
-          <p className="text-blue-300">
-            {explanation.learning_point}
-          </p>
+          <p className="text-blue-300">{explanation.learning_point}</p>
         </section>
       )}
 
       <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-        <h2 className="text-2xl font-semibold mb-4">
-          Market Assets
-        </h2>
+        <h2 className="text-2xl font-semibold mb-4">Market Assets</h2>
 
         <table className="w-full text-left">
           <thead>
@@ -197,10 +260,7 @@ export default function Home() {
 
           <tbody>
             {assets.map((asset) => (
-              <tr
-                key={asset.id}
-                className="border-b border-gray-800"
-              >
+              <tr key={asset.id} className="border-b border-gray-800">
                 <td className="py-2">{asset.id}</td>
                 <td>{asset.name}</td>
                 <td>{asset.sector}</td>
@@ -216,13 +276,18 @@ export default function Home() {
         <h2 className="text-2xl font-semibold mb-4">Trade</h2>
 
         <div className="flex gap-4 mb-4">
-          <input
-            type="number"
-            placeholder="Asset ID"
+          <select
             value={assetId}
             onChange={(event) => setAssetId(event.target.value)}
             className="p-3 rounded bg-gray-800 border border-gray-700"
-          />
+          >
+            <option value="">Select Asset</option>
+            {assets.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.name} — ${asset.price}
+              </option>
+            ))}
+          </select>
 
           <input
             type="number"
@@ -251,21 +316,29 @@ export default function Home() {
       </section>
 
       <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-        <h2 className="text-2xl font-semibold mb-4">
-          Market Price History
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold">Market Price History</h2>
+
+          <select
+            value={selectedChartAsset}
+            onChange={(event) => setSelectedChartAsset(event.target.value)}
+            className="p-3 rounded bg-gray-800 border border-gray-700"
+          >
+            {assets.map((asset) => (
+              <option key={asset.id} value={asset.name}>
+                {asset.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="w-full h-[400px] min-w-0">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={marketHistory}>
+            <LineChart data={filteredMarketHistory}>
               <CartesianGrid strokeDasharray="3 3" />
-
-              <XAxis dataKey="asset_name" />
-
+              <XAxis dataKey="time" />
               <YAxis />
-
               <Tooltip />
-
               <Line
                 type="monotone"
                 dataKey="price"
@@ -278,14 +351,40 @@ export default function Home() {
       </section>
 
       <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
-        <h2 className="text-2xl font-semibold mb-4">
-          Transaction History
-        </h2>
+        <h2 className="text-2xl font-semibold mb-4">News History</h2>
+
+        {newsHistory.length === 0 ? (
+          <p className="text-gray-400">No news events yet.</p>
+        ) : (
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="py-2">Headline</th>
+                <th>Sector</th>
+                <th>Sentiment</th>
+                <th>Severity</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {newsHistory.map((event) => (
+                <tr key={event.id} className="border-b border-gray-800">
+                  <td className="py-2">{event.title}</td>
+                  <td>{event.sector}</td>
+                  <td>{event.sentiment}</td>
+                  <td>{event.severity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+        <h2 className="text-2xl font-semibold mb-4">Transaction History</h2>
 
         {transactions.length === 0 ? (
-          <p className="text-gray-400">
-            No transactions yet.
-          </p>
+          <p className="text-gray-400">No transactions yet.</p>
         ) : (
           <table className="w-full text-left">
             <thead>
@@ -300,20 +399,11 @@ export default function Home() {
 
             <tbody>
               {transactions.map((transaction) => (
-                <tr
-                  key={transaction.id}
-                  className="border-b border-gray-800"
-                >
-                  <td className="py-2">
-                    {transaction.trade_type}
-                  </td>
-
+                <tr key={transaction.id} className="border-b border-gray-800">
+                  <td className="py-2">{transaction.trade_type}</td>
                   <td>{transaction.asset_name}</td>
-
                   <td>{transaction.quantity}</td>
-
                   <td>${transaction.price}</td>
-
                   <td>${transaction.total_value}</td>
                 </tr>
               ))}
@@ -324,44 +414,28 @@ export default function Home() {
 
       {portfolio && (
         <section className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-          <h2 className="text-2xl font-semibold mb-4">
-            Portfolio Analytics
-          </h2>
+          <h2 className="text-2xl font-semibold mb-4">Portfolio Analytics</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-800 p-4 rounded-lg">
               <p className="text-gray-400">Cash</p>
-
-              <p className="text-2xl font-bold">
-                ${portfolio.cash}
-              </p>
+              <p className="text-2xl font-bold">${portfolio.cash}</p>
             </div>
 
             <div className="bg-gray-800 p-4 rounded-lg">
-              <p className="text-gray-400">
-                Holdings Value
-              </p>
-
-              <p className="text-2xl font-bold">
-                ${portfolio.holdings_value}
-              </p>
+              <p className="text-gray-400">Holdings Value</p>
+              <p className="text-2xl font-bold">${portfolio.holdings_value}</p>
             </div>
 
             <div className="bg-gray-800 p-4 rounded-lg">
-              <p className="text-gray-400">
-                Total Portfolio Value
-              </p>
-
+              <p className="text-gray-400">Total Portfolio Value</p>
               <p className="text-2xl font-bold">
                 ${portfolio.total_portfolio_value}
               </p>
             </div>
 
             <div className="bg-gray-800 p-4 rounded-lg">
-              <p className="text-gray-400">
-                Unrealized P/L
-              </p>
-
+              <p className="text-gray-400">Unrealized P/L</p>
               <p
                 className={`text-2xl font-bold ${
                   portfolio.total_unrealized_pl >= 0
@@ -374,15 +448,10 @@ export default function Home() {
             </div>
           </div>
 
-          <h3 className="text-lg font-semibold mb-2">
-            Holdings
-          </h3>
+          <h3 className="text-lg font-semibold mb-2">Holdings</h3>
 
-          {!portfolio.holdings ||
-          portfolio.holdings.length === 0 ? (
-            <p className="text-gray-400">
-              No assets owned yet.
-            </p>
+          {!portfolio.holdings || portfolio.holdings.length === 0 ? (
+            <p className="text-gray-400">No assets owned yet.</p>
           ) : (
             <table className="w-full text-left">
               <thead>
@@ -398,22 +467,12 @@ export default function Home() {
 
               <tbody>
                 {portfolio.holdings.map((holding) => (
-                  <tr
-                    key={holding.asset_id}
-                    className="border-b border-gray-800"
-                  >
-                    <td className="py-2">
-                      {holding.asset_name}
-                    </td>
-
+                  <tr key={holding.asset_id} className="border-b border-gray-800">
+                    <td className="py-2">{holding.asset_name}</td>
                     <td>{holding.quantity}</td>
-
                     <td>${holding.average_price}</td>
-
                     <td>${holding.current_price}</td>
-
                     <td>${holding.current_value}</td>
-
                     <td
                       className={
                         holding.unrealized_pl >= 0
