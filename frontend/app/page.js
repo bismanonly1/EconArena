@@ -22,6 +22,7 @@ export default function Home() {
   const [assetId, setAssetId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [marketHistory, setMarketHistory] = useState([]);
+  const [transactions, setTransactions] = useState([]);
 
   const fetchAssets = async () => {
     try {
@@ -50,6 +51,15 @@ export default function Home() {
       setMarketHistory(response.data);
     } catch (error) {
       console.error("FETCH MARKET HISTORY ERROR:", error);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/transactions`);
+      setTransactions(response.data);
+    } catch (error) {
+      console.error("FETCH TRANSACTIONS ERROR:", error);
     }
   };
 
@@ -85,6 +95,7 @@ export default function Home() {
 
       await fetchAssets();
       await fetchPortfolio();
+      await fetchPortfolio();
     } catch (error) {
       console.error("BUY ASSET ERROR:", error);
     }
@@ -107,6 +118,7 @@ export default function Home() {
 
       await fetchAssets();
       await fetchPortfolio();
+      await fetchTransactions();
     } catch (error) {
       console.error("SELL ASSET ERROR:", error);
     }
@@ -116,6 +128,7 @@ export default function Home() {
     fetchAssets();
     fetchPortfolio();
     fetchMarketHistory();
+    fetchTransactions();
   }, []);
 
   return (
@@ -251,6 +264,38 @@ export default function Home() {
   </div>
 </section>
       
+<section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+  <h2 className="text-2xl font-semibold mb-4">Transaction History</h2>
+
+  {transactions.length === 0 ? (
+    <p className="text-gray-400">No transactions yet.</p>
+  ) : (
+    <table className="w-full text-left">
+      <thead>
+        <tr className="border-b border-gray-700">
+          <th className="py-2">Type</th>
+          <th>Asset</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Total Value</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {transactions.map((transaction) => (
+          <tr key={transaction.id} className="border-b border-gray-800">
+            <td className="py-2">{transaction.trade_type}</td>
+            <td>{transaction.asset_name}</td>
+            <td>{transaction.quantity}</td>
+            <td>${transaction.price}</td>
+            <td>${transaction.total_value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</section>
+
       {portfolio && (
         <section className="bg-gray-900 p-6 rounded-xl border border-gray-800">
           <h2 className="text-2xl font-semibold mb-4">Portfolio</h2>
