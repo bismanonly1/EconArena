@@ -29,6 +29,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [marketMovements, setMarketMovements] = useState([]);
   const [economicIndicators, setEconomicIndicators] = useState(null);
+  const [marketRegime, setMarketRegime] = useState("");
 
   const fetchAssets = async () => {
     try {
@@ -106,6 +107,7 @@ export default function Home() {
       setAssets(response.data.updated_assets);
       setMarketMovements(response.data.market_movements || []);
       setEconomicIndicators(response.data.economic_indicators);
+      setMarketRegime(response.data.market_regime || "");
       setMessage("Market event generated successfully.");
 
       await fetchPortfolio();
@@ -184,6 +186,7 @@ export default function Home() {
       setNews(null);
       setExplanation(null);
       setMarketMovements([]);
+      setMarketRegime("");
       setMessage("Simulation reset successfully.");
 
       await refreshAll();
@@ -236,6 +239,31 @@ export default function Home() {
         </button>
       </section>
 
+      {marketRegime && (
+  <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+    <h2 className="text-2xl font-semibold mb-2">Current Market Regime</h2>
+
+    <p
+      className={`text-3xl font-bold ${
+        marketRegime === "Panic" || marketRegime === "Recession"
+          ? "text-red-400"
+          : marketRegime === "Expansion"
+          ? "text-green-400"
+          : marketRegime === "Inflationary"
+          ? "text-yellow-400"
+          : "text-blue-400"
+      }`}
+    >
+      {marketRegime}
+    </p>
+
+    <p className="text-gray-400 mt-2">
+      This regime is calculated from inflation, interest rates, GDP growth,
+      unemployment, and fear conditions.
+    </p>
+  </section>
+)}
+
       {news && (
         <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
           <h2 className="text-2xl font-semibold mb-2">Latest Market News</h2>
@@ -273,6 +301,8 @@ export default function Home() {
                 <th>Old Price</th>
                 <th>New Price</th>
                 <th>Impact</th>
+                <th>Macro Pressure</th>
+                <th>Regime</th>
               </tr>
             </thead>
 
@@ -295,6 +325,17 @@ export default function Home() {
                   >
                     {movement.impact_percent}%
                   </td>
+
+                  <td
+                    className={
+                      movement.macro_pressure >= 0
+                        ? "text-green-400"
+                      :"text-red-400"
+                    }
+                    >
+                    {movement.macro_pressure}%
+                    </td>
+                  <td>{movement.regime}</td>
                 </tr>
               ))}
             </tbody>

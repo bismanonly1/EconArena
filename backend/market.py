@@ -1,6 +1,8 @@
 import random
 
 from db_models import Asset, MarketHistory
+from economy import get_latest_indicators
+from economy_rules import calculate_macro_pressure, determine_market_regime
 
 
 SECTOR_CORRELATIONS = {
@@ -52,22 +54,26 @@ def get_assets(db):
     ]
 
 
-def calculate_price_change(asset, base_impact):
+def calculate_price_change(asset, base_impact, macro_pressure, fear_index):
     market_noise = random.uniform(-0.015, 0.015)
+
+    fear_volatility_boost = fear_index / 1000
 
     volatility_multiplier = random.uniform(0.5, 1.5)
 
-    volatility_adjustment = abs(base_impact) * asset.volatility * volatility_multiplier
+    directional_volatility = abs(base_impact + macro_pressure) * asset.volatility * volatility_multiplier
 
-    if base_impact >= 0:
-        final_impact = base_impact + volatility_adjustment + market_noise
+    if base_impact + macro_pressure >= 0:
+        final_impact = base_impact + macro_pressure + directional_volatility + market_noise + fear_volatility_boost
     else:
-        final_impact = base_impact - volatility_adjustment + market_noise
+        final_impact = base_impact + macro_pressure - directional_volatility + market_noise - fear_volatility_boost
 
-    return final_impact
+    final_impact = max(-0.25, min(final_impact, 0.25))
+
+    return round(final_impact, 4)
 
 
-def apply_price_change(asset, impact):
+def apply_price_change(asset, impact, macro_pressure, regime):
     old_price = asset.price
     new_price = round(old_price * (1 + impact), 2)
 
@@ -82,6 +88,8 @@ def apply_price_change(asset, impact):
         "old_price": old_price,
         "new_price": new_price,
         "impact_percent": round(impact * 100, 2),
+        "macro_pressure_percent": round(macro_pressure * 100, 2),
+        "market_regime": regime,
     }
 
 
@@ -100,28 +108,42 @@ def apply_news_to_market(news_event, db):
     sentiment = news_event["sentiment"]
     severity = news_event["severity"]
 
+    indicators = get_latest_indicators(db)
+    regime = determine_market_regime(indicators)
+
     if sentiment == "positive":
         main_impact = severity
     else:
         main_impact = -severity
 
     market_movements = []
-
     all_assets = db.query(Asset).all()
 
     for asset in all_assets:
         if asset.sector == affected_sector:
-            impact = calculate_price_change(asset, main_impact)
+            news_impact = main_impact
         else:
-            sector_correlation = SECTOR_CORRELATIONS.get(
+            news_impact = SECTOR_CORRELATIONS.get(
                 affected_sector, {}
             ).get(asset.sector, 0)
 
-            impact = calculate_price_change(asset, sector_correlation)
+        macro_pressure = calculate_macro_pressure(asset.sector, indicators)
 
-        movement = apply_price_change(asset, impact)
+        final_impact = calculate_price_change(
+            asset=asset,
+            base_impact=news_impact,
+            macro_pressure=macro_pressure,
+            fear_index=indicators.fear_index,
+        )
+
+        movement = apply_price_change(
+            asset=asset,
+            impact=final_impact,
+            macro_pressure=macro_pressure,
+            regime=regime,
+        )
+
         market_movements.append(movement)
-
         save_market_history(asset, db)
 
     db.commit()
@@ -129,4 +151,5 @@ def apply_news_to_market(news_event, db):
     return {
         "updated_assets": get_assets(db),
         "market_movements": market_movements,
+        "market_regime": regime,
     }
