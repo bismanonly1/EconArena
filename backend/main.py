@@ -11,6 +11,7 @@ from explanation import explain_market_event
 from db_models import MarketHistory, Asset, Portfolio, Holding, Transaction, NewsEvent, EconomicIndicator
 from economy import get_latest_indicators, serialize_indicators, update_economic_indicators
 from db_models import EconomicIndicator
+from advisor import analyze_portfolio_risk
 
 app = FastAPI(title="EconArena AI")
 
@@ -65,14 +66,16 @@ def simulate_market_event(db: Session = Depends(get_db)):
 
     economic_indicators = update_economic_indicators(news_event, db)
     market_result = apply_news_to_market(news_event, db)
-    explanation = explain_market_event(news_event)
+    latest_indicators = get_latest_indicators(db)
+    explanation = explain_market_event(news_event, latest_indicators)
 
     return {
         "news": news_event,
         "economic_indicators": economic_indicators,
+        "market_regime": market_result["market_regime"],
         "updated_assets": market_result["updated_assets"],
         "market_movements": market_result["market_movements"],
-        "ai_explanation": explanation
+        "ai_explanation": explanation,
     }
 
 @app.get("/news/history")
@@ -95,6 +98,10 @@ def news_history(db: Session = Depends(get_db)):
 @app.get("/portfolio")
 def portfolio(db: Session = Depends(get_db)):
     return get_portfolio(db)
+
+@app.get("/advisor/portfolio")
+def portfolio_advisor(db:Session = Depends(get_db)):
+    return analyze_portfolio_risk(db)
 
 @app.get("/market/history")
 def market_history(db: Session = Depends(get_db)):

@@ -30,6 +30,7 @@ export default function Home() {
   const [marketMovements, setMarketMovements] = useState([]);
   const [economicIndicators, setEconomicIndicators] = useState(null);
   const [marketRegime, setMarketRegime] = useState("");
+  const [advisor, setAdvisor] = useState(null);
 
   const fetchAssets = async () => {
     try {
@@ -89,6 +90,15 @@ export default function Home() {
     }
   };
 
+  const fetchAdvisor = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/advisor/portfolio`);
+      setAdvisor(response.data);
+    } catch (error) {
+      console.error("FETCH ADVISOR ERROR:", error);
+    }
+  };
+
   const refreshAll = async () => {
     await fetchAssets();
     await fetchPortfolio();
@@ -96,6 +106,7 @@ export default function Home() {
     await fetchTransactions();
     await fetchNewsHistory();
     await fetchEconomicIndicators();
+    await fetchAdvisor();
   };
 
   const simulateEvent = async () => {
@@ -113,6 +124,7 @@ export default function Home() {
       await fetchPortfolio();
       await fetchMarketHistory();
       await fetchNewsHistory();
+      await fetchAdvisor();
     } catch (error) {
       console.error("SIMULATE EVENT ERROR:", error);
       setMessage("Failed to generate market event.");
@@ -143,6 +155,7 @@ export default function Home() {
       await fetchAssets();
       await fetchPortfolio();
       await fetchTransactions();
+      await fetchAdvisor();
     } catch (error) {
       console.error("BUY ASSET ERROR:", error);
       setMessage("Buy order failed.");
@@ -173,6 +186,7 @@ export default function Home() {
       await fetchAssets();
       await fetchPortfolio();
       await fetchTransactions();
+      await fetchAdvisor();
     } catch (error) {
       console.error("SELL ASSET ERROR:", error);
       setMessage("Sell order failed.");
@@ -186,6 +200,7 @@ export default function Home() {
       setNews(null);
       setExplanation(null);
       setMarketMovements([]);
+      setAdvisor(null);
       setMarketRegime("");
       setMessage("Simulation reset successfully.");
 
@@ -328,14 +343,14 @@ export default function Home() {
 
                   <td
                     className={
-                      movement.macro_pressure >= 0
+                      movement.macro_pressure_percent >= 0
                         ? "text-green-400"
-                      :"text-red-400"
+                        : "text-red-400"
                     }
                     >
-                    {movement.macro_pressure}%
+                    {movement.macro_pressure_percent}%
                     </td>
-                  <td>{movement.regime}</td>
+                  <td>{movement.market_regime}</td>
                 </tr>
               ))}
             </tbody>
@@ -591,6 +606,81 @@ export default function Home() {
           )}
         </section>
       )}
+
+      {advisor && (
+  <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+    <h2 className="text-2xl font-semibold mb-4">AI Portfolio Advisor</h2>
+
+    <div className="bg-gray-800 p-4 rounded-lg mb-4">
+      <p className="text-gray-400">Risk Level</p>
+
+      <p
+        className={`text-3xl font-bold ${
+          advisor.risk_level === "High"
+            ? "text-red-400"
+            : advisor.risk_level === "Medium"
+            ? "text-yellow-400"
+            : "text-green-400"
+        }`}
+      >
+        {advisor.risk_level}
+      </p>
+    </div>
+
+    <div className="mb-4">
+      <h3 className="text-lg font-semibold mb-2">Summary</h3>
+      <p className="text-gray-300">{advisor.summary}</p>
+    </div>
+
+    <div className="mb-4">
+      <h3 className="text-lg font-semibold mb-2">Warnings</h3>
+
+      <ul className="list-disc list-inside text-gray-300 space-y-1">
+        {advisor.warnings.map((warning, index) => (
+          <li key={index}>{warning}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div className="mb-4">
+      <h3 className="text-lg font-semibold mb-2">Suggestions</h3>
+
+      <ul className="list-disc list-inside text-gray-300 space-y-1">
+        {advisor.suggestions.map((suggestion, index) => (
+          <li key={index}>{suggestion}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold mb-2">Sector Exposure</h3>
+
+      {Object.keys(advisor.sector_exposure).length === 0 ? (
+        <p className="text-gray-400">No sector exposure yet.</p>
+      ) : (
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-gray-700">
+              <th className="py-2">Sector</th>
+              <th>Exposure</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {Object.entries(advisor.sector_exposure).map(
+              ([sector, exposure]) => (
+                <tr key={sector} className="border-b border-gray-800">
+                  <td className="py-2">{sector}</td>
+                  <td>{exposure}%</td>
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </section>
+)}
 
       {economicIndicators && (
         <section className="bg-gray-900 p-6 rounded-xl border border-gray-800">
