@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer
+} from "recharts";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
@@ -12,6 +21,7 @@ export default function Home() {
   const [explanation, setExplanation] = useState(null);
   const [assetId, setAssetId] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [marketHistory, setMarketHistory] = useState([]);
 
   const fetchAssets = async () => {
     try {
@@ -31,6 +41,18 @@ export default function Home() {
     }
   };
 
+  const fetchMarketHistory = async () => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/market/history`
+      );
+
+      setMarketHistory(response.data);
+    } catch (error) {
+      console.error("FETCH MARKET HISTORY ERROR:", error);
+    }
+  };
+
   const simulateEvent = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/market/simulate-event`);
@@ -40,6 +62,7 @@ export default function Home() {
       setAssets(response.data.updated_assets);
 
       await fetchPortfolio();
+      await fetchMarketHistory();
     } catch (error) {
       console.error("SIMULATE EVENT ERROR:", error);
     }
@@ -92,6 +115,7 @@ export default function Home() {
   useEffect(() => {
     fetchAssets();
     fetchPortfolio();
+    fetchMarketHistory();
   }, []);
 
   return (
@@ -199,7 +223,34 @@ export default function Home() {
           </button>
         </div>
       </section>
+            
+            <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+  <h2 className="text-2xl font-semibold mb-4">
+    Market Price History
+  </h2>
 
+  <div style={{ width: "100%", height: 400 }}>
+    <ResponsiveContainer>
+      <LineChart data={marketHistory}>
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis dataKey="asset_name" />
+
+        <YAxis />
+
+        <Tooltip />
+
+        <Line
+          type="monotone"
+          dataKey="price"
+          stroke="#3b82f6"
+          strokeWidth={3}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</section>
+      
       {portfolio && (
         <section className="bg-gray-900 p-6 rounded-xl border border-gray-800">
           <h2 className="text-2xl font-semibold mb-4">Portfolio</h2>

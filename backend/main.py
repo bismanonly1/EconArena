@@ -8,6 +8,7 @@ from market import get_assets, apply_news_to_market
 from news import generate_news
 from trading import get_portfolio, buy_asset, sell_asset, get_transactions
 from explanation import explain_market_event
+from db_models import MarketHistory
 
 
 app = FastAPI(title="EconArena AI")
@@ -64,11 +65,19 @@ def simulate_market_event(db: Session = Depends(get_db)):
 def portfolio(db: Session = Depends(get_db)):
     return get_portfolio(db)
 
+@app.get("/market/history")
+def market_history(db: Session = Depends(get_db)):
+    history = db.query(MarketHistory).all()
 
-@app.get("/transactions")
-def transactions(db: Session = Depends(get_db)):
-    return get_transactions(db)
-
+    return [
+        {
+            "asset_id": item.asset_id,
+            "asset_name": item.asset_name,
+            "price": item.price,
+            "timestamp": item.timestamp
+        }
+        for item in history
+    ]
 
 @app.post("/trade/buy")
 def buy(request: TradeRequest, db: Session = Depends(get_db)):
@@ -78,6 +87,9 @@ def buy(request: TradeRequest, db: Session = Depends(get_db)):
         db
     )
 
+@app.get("/transactions")
+def transactions(db: Session = Depends(get_db)):
+    return get_transactions(db)
 
 @app.post("/trade/sell")
 def sell(request: TradeRequest, db: Session = Depends(get_db)):
@@ -86,3 +98,4 @@ def sell(request: TradeRequest, db: Session = Depends(get_db)):
         request.quantity,
         db
     )
+

@@ -53,3 +53,12 @@ class NewsEvent(Base):
     sentiment = Column(String, nullable=False)
     severity = Column(Float, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+class MarketHistory(Base):
+    __tablename__ = "market_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    asset_id = Column(Integer, nullable=False)
+    asset_name = Column(String, nullable=False)
+    price = Column(Float, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)

@@ -1,4 +1,4 @@
-from db_models import Asset
+from db_models import Asset, MarketHistory
 
 
 def get_assets(db):
@@ -30,6 +30,14 @@ def apply_news_to_market(news_event, db):
             asset.price = round(asset.price * (1 + severity), 2)
         else:
             asset.price = round(asset.price * (1 - severity), 2)
+
+        history = MarketHistory(
+            asset_id=asset.id,
+            asset_name=asset.name,
+            price=asset.price
+        )
+
+        db.add(history)
 
     db.commit()
 
