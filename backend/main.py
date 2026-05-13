@@ -8,8 +8,9 @@ from market import get_assets, apply_news_to_market
 from news import generate_news
 from trading import get_portfolio, buy_asset, sell_asset, get_transactions
 from explanation import explain_market_event
-from db_models import MarketHistory, Asset, Portfolio, Holding, Transaction, NewsEvent
-
+from db_models import MarketHistory, Asset, Portfolio, Holding, Transaction, NewsEvent, EconomicIndicator
+from economy import get_latest_indicators, serialize_indicators, update_economic_indicators
+from db_models import EconomicIndicator
 
 app = FastAPI(title="EconArena AI")
 
@@ -62,12 +63,15 @@ def simulate_market_event(db: Session = Depends(get_db)):
     db.add(saved_news)
     db.commit()
 
-    updated_assets = apply_news_to_market(news_event, db)
+    economic_indicators = update_economic_indicators(news_event, db)
+    market_result = apply_news_to_market(news_event, db)
     explanation = explain_market_event(news_event)
 
     return {
         "news": news_event,
-        "updated_assets": updated_assets,
+        "economic_indicators": economic_indicators,
+        "updated_assets": market_result["updated_assets"],
+        "market_movements": market_result["market_movements"],
         "ai_explanation": explanation
     }
 
@@ -132,6 +136,17 @@ def reset_simulation(db: Session = Depends(get_db)):
     db.query(Transaction).delete()
     db.query(MarketHistory).delete()
     db.query(NewsEvent).delete()
+    db.query(EconomicIndicator).delete()
+
+    db.add(
+        EconomicIndicator(
+            inflation=2.5,
+            interest_rate=4.5,
+            gdp_growth=2.0,
+            unemployment=5.5,
+            fear_index=20.0
+        )
+    )
 
     portfolio = db.query(Portfolio).first()
     if portfolio:
@@ -153,3 +168,8 @@ def reset_simulation(db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Simulation reset successfully"}
+
+@app.get("/economy/indicators")
+def economy_indicators(db: Session = Depends(get_db)):
+    indicators = get_latest_indicators(db)
+    return serialize_indicators(indicators)

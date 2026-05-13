@@ -1,5 +1,5 @@
 from database import Base, engine, SessionLocal
-from db_models import Asset, Portfolio
+from db_models import Asset, Portfolio, EconomicIndicator
 
 
 def init_database():
@@ -24,6 +24,19 @@ def init_database():
 
     if existing_portfolio == 0:
         db.add(Portfolio(cash=10000.0))
+
+    existing_indicators = db.query(EconomicIndicator).count()
+
+    if existing_indicators == 0:
+        db.add(
+            EconomicIndicator(
+                inflation=2.5,
+                interest_rate=4.5,
+                gdp_growth=2.0,
+                unemployment=5.5,
+                fear_index=20.0
+            )
+        )
 
     db.commit()
     db.close()

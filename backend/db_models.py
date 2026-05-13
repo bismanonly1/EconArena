@@ -62,3 +62,14 @@ class MarketHistory(Base):
     asset_name = Column(String, nullable=False)
     price = Column(Float, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+class EconomicIndicator(Base):
+    __tablename__ = "economic_indicators"
+
+    id = Column(Integer, primary_key=True, index=True)
+    inflation = Column(Float, default=2.5)
+    interest_rate = Column(Float, default=4.5)
+    gdp_growth = Column(Float, default=2.0)
+    unemployment = Column(Float, default=5.5)
+    fear_index = Column(Float, default=20.0)
+    timestamp = Column(DateTime, default=datetime.utcnow)

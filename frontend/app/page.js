@@ -27,6 +27,8 @@ export default function Home() {
   const [newsHistory, setNewsHistory] = useState([]);
   const [selectedChartAsset, setSelectedChartAsset] = useState("");
   const [message, setMessage] = useState("");
+  const [marketMovements, setMarketMovements] = useState([]);
+  const [economicIndicators, setEconomicIndicators] = useState(null);
 
   const fetchAssets = async () => {
     try {
@@ -77,12 +79,22 @@ export default function Home() {
     }
   };
 
+  const fetchEconomicIndicators = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/economy/indicators`);
+      setEconomicIndicators(response.data);
+    } catch (error) {
+      console.error("FETCH ECONOMIC INDICATORS ERROR:", error);
+    }
+  };
+
   const refreshAll = async () => {
     await fetchAssets();
     await fetchPortfolio();
     await fetchMarketHistory();
     await fetchTransactions();
     await fetchNewsHistory();
+    await fetchEconomicIndicators();
   };
 
   const simulateEvent = async () => {
@@ -92,6 +104,8 @@ export default function Home() {
       setNews(response.data.news);
       setExplanation(response.data.ai_explanation);
       setAssets(response.data.updated_assets);
+      setMarketMovements(response.data.market_movements || []);
+      setEconomicIndicators(response.data.economic_indicators);
       setMessage("Market event generated successfully.");
 
       await fetchPortfolio();
@@ -169,6 +183,7 @@ export default function Home() {
 
       setNews(null);
       setExplanation(null);
+      setMarketMovements([]);
       setMessage("Simulation reset successfully.");
 
       await refreshAll();
@@ -241,6 +256,49 @@ export default function Home() {
           <p className="text-gray-300 mb-3">{explanation.explanation}</p>
 
           <p className="text-blue-300">{explanation.learning_point}</p>
+        </section>
+      )}
+
+      {marketMovements.length > 0 && (
+        <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
+          <h2 className="text-2xl font-semibold mb-4">
+            Market Movement Breakdown
+          </h2>
+
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="py-2">Asset</th>
+                <th>Sector</th>
+                <th>Old Price</th>
+                <th>New Price</th>
+                <th>Impact</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {marketMovements.map((movement) => (
+                <tr
+                  key={movement.asset_name}
+                  className="border-b border-gray-800"
+                >
+                  <td className="py-2">{movement.asset_name}</td>
+                  <td>{movement.sector}</td>
+                  <td>${movement.old_price}</td>
+                  <td>${movement.new_price}</td>
+                  <td
+                    className={
+                      movement.impact_percent >= 0
+                        ? "text-green-400"
+                        : "text-red-400"
+                    }
+                  >
+                    {movement.impact_percent}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
 
@@ -413,7 +471,7 @@ export default function Home() {
       </section>
 
       {portfolio && (
-        <section className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+        <section className="bg-gray-900 p-6 rounded-xl mb-8 border border-gray-800">
           <h2 className="text-2xl font-semibold mb-4">Portfolio Analytics</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -467,7 +525,10 @@ export default function Home() {
 
               <tbody>
                 {portfolio.holdings.map((holding) => (
-                  <tr key={holding.asset_id} className="border-b border-gray-800">
+                  <tr
+                    key={holding.asset_id}
+                    className="border-b border-gray-800"
+                  >
                     <td className="py-2">{holding.asset_name}</td>
                     <td>{holding.quantity}</td>
                     <td>${holding.average_price}</td>
@@ -487,6 +548,55 @@ export default function Home() {
               </tbody>
             </table>
           )}
+        </section>
+      )}
+
+      {economicIndicators && (
+        <section className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+          <h2 className="text-2xl font-semibold mb-4">Economic Indicators</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">Inflation</p>
+              <p className="text-2xl font-bold">
+                {economicIndicators.inflation}%
+              </p>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">Interest Rate</p>
+              <p className="text-2xl font-bold">
+                {economicIndicators.interest_rate}%
+              </p>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">GDP Growth</p>
+              <p className="text-2xl font-bold">
+                {economicIndicators.gdp_growth}%
+              </p>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">Unemployment</p>
+              <p className="text-2xl font-bold">
+                {economicIndicators.unemployment}%
+              </p>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400">Fear Index</p>
+              <p
+                className={`text-2xl font-bold ${
+                  economicIndicators.fear_index >= 50
+                    ? "text-red-400"
+                    : "text-green-400"
+                }`}
+              >
+                {economicIndicators.fear_index}
+              </p>
+            </div>
+          </div>
         </section>
       )}
     </main>
