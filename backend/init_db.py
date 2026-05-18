@@ -1,5 +1,5 @@
 from database import Base, engine, SessionLocal
-from db_models import Asset, Portfolio, EconomicIndicator
+from db_models import Asset, Portfolio, EconomicIndicator, RealPortfolio
 
 
 def init_database():
@@ -37,7 +37,11 @@ def init_database():
                 fear_index=20.0
             )
         )
+    existing_real_portfolio = db.query(RealPortfolio).count()
 
+    if existing_real_portfolio == 0:
+        db.add(RealPortfolio(cash=10000.0))
+        
     db.commit()
     db.close()
 

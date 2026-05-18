@@ -73,3 +73,34 @@ class EconomicIndicator(Base):
     unemployment = Column(Float, default=5.5)
     fear_index = Column(Float, default=20.0)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+class RealPortfolio(Base):
+    __tablename__ = "real_portfolio"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cash = Column(Float, default=10000.0)
+
+
+class RealHolding(Base):
+    __tablename__ = "real_holdings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    asset_class = Column(String, nullable=False)
+    sector = Column(String, nullable=False)
+    quantity = Column(Integer, nullable=False)
+    average_price = Column(Float, nullable=False)
+
+
+class RealTransaction(Base):
+    __tablename__ = "real_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    trade_type = Column(String, nullable=False)
+    quantity = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)
+    total_value = Column(Float, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)

@@ -12,6 +12,9 @@ from db_models import MarketHistory, Asset, Portfolio, Holding, Transaction, New
 from economy import get_latest_indicators, serialize_indicators, update_economic_indicators
 from db_models import EconomicIndicator
 from advisor import analyze_portfolio_risk
+from canadian_universe import get_universe, get_categories, filter_universe
+from real_market import get_quote, get_quotes, get_price_history
+from real_trading import get_real_portfolio, buy_real_asset, sell_real_asset, get_real_transactions, reset_real_portfolio
 
 app = FastAPI(title="EconArena AI")
 
@@ -27,6 +30,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class RealTradeRequest(BaseModel):
+    symbol: str
+    quantity: int
 
 class TradeRequest(BaseModel):
     asset_id: int
@@ -180,3 +186,81 @@ def reset_simulation(db: Session = Depends(get_db)):
 def economy_indicators(db: Session = Depends(get_db)):
     indicators = get_latest_indicators(db)
     return serialize_indicators(indicators)
+
+@app.get("/real-market/categories")
+def real_market_categories():
+    return get_categories()
+
+@app.get("/real-market/universe")
+def real_market_universe(
+    asset_class: str = None,
+    sector: str = None,
+    risk_level: str = None
+):
+    return filter_universe(
+        asset_class = asset_class,
+        sector = sector,
+        risk_level = risk_level
+    )
+
+@app.get("/real-market/quote/{symbol}")
+def real_market_quote(symbol: str):
+    return get_quote(symbol)
+
+@app.get("/real-market/quotes")
+def real_market_quotes(
+    asset_class: str = None,
+    sector: str = None,
+    risk_level: str = None
+):
+    universe = filter_universe(
+        asset_class = asset_class,
+        sector = sector,
+        risk_level = risk_level
+    )
+    symbols = [item["symbol"] for item in universe]
+    return get_quotes(symbols)
+
+@app.get("/real-market/history/{symbol}")
+def real_market_history(
+    symbol: str,
+    period: str = "1mo",
+    interval: str = "1d"
+):
+    return get_price_history(
+        symbol = symbol,
+        period = period,
+        interval = interval
+    )
+
+@app.get("/real-portfolio")
+def real_portfolio(db: Session = Depends(get_db)):
+    return get_real_portfolio(db)
+
+
+@app.get("/real-transactions")
+def real_transactions(db: Session = Depends(get_db)):
+    return get_real_transactions(db)
+
+
+@app.post("/real-trade/buy")
+def real_buy(request: RealTradeRequest, db: Session = Depends(get_db)):
+    return buy_real_asset(
+        request.symbol,
+        request.quantity,
+        db
+    )
+
+
+@app.post("/real-trade/sell")
+def real_sell(request: RealTradeRequest, db: Session = Depends(get_db)):
+    return sell_real_asset(
+        request.symbol,
+        request.quantity,
+        db
+    )
+
+
+@app.post("/real-portfolio/reset")
+def reset_real_market_portfolio(db: Session = Depends(get_db)):
+    return reset_real_portfolio(db)
